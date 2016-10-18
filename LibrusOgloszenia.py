@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     a_post_ids = []
     facebook = Facebook(config.token)
-    announcements = Announcements(Librus(config.login, config.password), on_new_announcement, "1C")
+    announcements = Announcements(Librus(config.login, config.password), on_new_announcement, config.filter_class)
     while True:
         print "Updating..."
         try:
