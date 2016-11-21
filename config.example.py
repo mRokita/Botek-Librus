@@ -2,5 +2,5 @@
 filter_class = "2C"
 login = "librus_login"
 password = "librus_pw"
-token = "fb_token"
-group_id = "fb_group_id"
+token = "telegram_token"
+chat_id = "telegram_chat_id"
