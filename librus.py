@@ -1,14 +1,18 @@
 # -*- coding: utf-8 -*-
 import cookielib
 import urllib2
-from urllib import urlencode
+import config
 import site_parser
+from urllib import urlencode
+from json import loads
+
 
 class WrongPasswordError(Exception):
     pass
 
 class SessionExpiredError(Exception):
     pass
+
 
 class Librus:
     """Klasa odpowiadająca za odbieranie danych z librusa"""
@@ -18,10 +22,7 @@ class Librus:
         # Stworzenie słoika na ciasteczka ;)
         self.__cj = cj = cookielib.CookieJar()
         self.__opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-        # Dodanie nagłówków HTTP
-        self.__opener.addheaders = [
-            ('User-Agent', 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:46.0) Gecko/20100101 Firefox/46.0)')
-        ]
+        self.__login()
 
     def login(self):
         self.__login()
@@ -29,19 +30,23 @@ class Librus:
     def __login(self):
         """Funkcja wykonująca logowanie do librusa"""
         # Odebranie ciasteczek
-        self.__opener.open("https://synergia.librus.pl/loguj")
+        self.__opener.addheaders = [('Authorization', 'Basic MzU6NjM2YWI0MThjY2JlODgyYjE5YTMzZjU3N2U5NGNiNGY=')]
 
-        # Wysłanie danych logowania za pomocą POST
-        data = self.__opener.open("https://synergia.librus.pl/loguj",
-                     urlencode({"login": self.__username,
-                                "passwd": self.__password,
-                                "ed_pass_keydown": "",
-                                "ed_pass_keyup": "",
-                                "captcha": "",
-                                "jest_captcha": "1",
-                                "czy_js": "0"}))
-        if "Podano nieprawidłowe hasło lub login" in data.read():
-            raise WrongPasswordError
+        try:
+            self.__opener.open('https://synergia.librus.pl')
+            list(self.__cj)[0].domain='api.librus.pl'
+            tokens = loads(self.__opener.open('https://api.librus.pl/OAuth/Token',
+                                              data=urlencode({
+                                                  'grant_type': 'password',
+                                                  'username': config.login,
+                                                  'password': config.password,
+                                                  'librus_long_term_token': '1',
+                                              })).read())
+
+        except urllib2.HTTPError as e:
+            e.getcode() == 400
+            raise WrongPasswordError('Nieprawidłowe hasło')
+        self.__opener.addheaders = [('Authorization', 'Bearer %s' % tokens['access_token'])]
 
     def get_announcements(self):
         """
@@ -52,7 +57,13 @@ class Librus:
                          "content": zawartość}]
         """
         # Załadowanie ogłoszeń
-        data = self.__opener.open("https://synergia.librus.pl/ogloszenia").read()
-        if "Brak dostępu" in data:
+        try:
+            data = loads(self.__opener.open('https://api.librus.pl/2.0/SchoolNotices').read())
+        except urllib2.HTTPError:
             raise SessionExpiredError
-        return site_parser.announcements_from_html(data)
+        print data
+        return [{'author': notice[u'AddedBy'][u'Id'],
+                 'title': notice[u'Subject'].encode('utf-8'),
+                 'content': notice[u'Content'].encode('utf-8'),
+                 'time': notice[u'StartDate']
+                 } for notice in data[u'SchoolNotices']]

@@ -3,12 +3,13 @@ from json import dumps
 import re
 from librus import SessionExpiredError
 from hashlib import md5
-
+from base64 import b64encode
 class Announcement:
     """
     Klasa reprezentująca ogłoszenie
     """
     PATTERN_CLASS = "([\d \\,]+)l\\.? ?.{0,8}%s[ABCDEF]{0,4}%s[ABCDEF]{0,4} (.+)"
+
     def __init__(self, author, time, content, title, trim_to_class = False):
         """
         Funkcja inicjalizująca
@@ -20,7 +21,8 @@ class Announcement:
         self.time = time
         self.content = content
         self.title = title
-        self.id = md5(self.title+self.author).hexdigest()
+        print [self.title]
+        self.id = md5(self.title).hexdigest()
         if trim_to_class:
             self.trim_to_class(trim_to_class)
 
